@@ -1,37 +1,23 @@
-import requests
-from bs4 import BeautifulSoup
-import urllib.request
+# import hashlib
+#
+# #1
+# output_file_path = "no_dups_urls.txt"
+# input_file_path = "urls.txt"
+#
+# #2
+# completed_lines_hash = set()
+#
+# #3
+# output_file = open(output_file_path, "w")
+#
+# #4
+# for line in open(input_file_path, "r"):
+#   #5
+#   hashValue = hashlib.md5(line.rstrip().encode('utf-8')).hexdigest()
+#   #6
+#   if hashValue not in completed_lines_hash:
+#     output_file.write(line)
+#     completed_lines_hash.add(hashValue)
+# #7
+# output_file.close()
 
-
-judgescv_url = "https://judgescv.court.gov.il"
-judges_name_ref_dict = {}
-
-
-def extract_judge(judges_li):
-    name = judges_li.find_all('a')[0]['title']
-    reference = judgescv_url + judges_li.find_all('a')[0]['href']
-    judges_name_ref_dict[name] = reference
-
-def extract_li():
-    with open('judges_data.html', 'r') as f:
-        contents = f.read()
-
-        soup = BeautifulSoup(contents, 'html.parser')
-
-        judges_ul = soup.find_all('ul', class_='animate-container list-unstyled remove-last-speace')
-
-        judges_entries = list(judges_ul[0].find_all("li"))
-
-        for judges_li in judges_entries:
-            extract_judge(judges_li)
-
-
-extract_li()
-# print(judges_name_ref_dict)
-
-for name, ref in zip(judges_name_ref_dict.keys(), judges_name_ref_dict.values()):
-    page = requests.get(ref)
-    soup = BeautifulSoup(page.content, 'html.parser')
-    print(soup)
-    break
-    # print(ref)

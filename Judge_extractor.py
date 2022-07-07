@@ -1,3 +1,4 @@
+import json
 import requests
 from bs4 import BeautifulSoup
 
@@ -12,97 +13,190 @@ class JudgeInfo:
     country_of_birth = ""
     role_description = ""
     role_type = ""
-
     served_in_army: bool
     start_year_of_military = ""
     end_year_of_military = ""
-
     graduation_year = ""
-    appendix = []
+    intern_start = ""
+    intern_end = ""
+    year_of_certification = ""
+    job_history = ""
 
 
 list_of_urls = []
+judges_list = []
 
-URL = "https://www.verdicts.co.il/judge/%D7%94%D7%A9%D7%95%D7%A4%D7%98%D7%AA-%D7%9C%D7%99%D7%90%D7%AA-%D7%99%D7%A8%D7%95%D7%9F/"
-page = requests.get(URL)
-soup = BeautifulSoup(page.content, "html.parser")
+url_file = open('urls.txt', 'r')
+Lines = url_file.readlines()
 
-liat = JudgeInfo()
+for line in Lines:
+    list_of_urls.append(line.strip())
 
-judges_entry = soup.find(id="article_body")
+for URL in list_of_urls:
+    page = requests.get(URL)
+    soup = BeautifulSoup(page.content, "html.parser")
+    liat = JudgeInfo()
+    judges_entry = soup.find(id="article_body")
 
-# region first and last names and role extraction
-english_full_name = ""
-hebrew_full_name = ""
-h1 = judges_entry.find("h1")
-names = h1.text.split('|')
+    # region first and last names and role extraction
+    english_full_name = ""
+    hebrew_full_name = ""
+    try:
+        h1 = judges_entry.find("h1")
+    except:
+        print("Empty? ", URL)
+        continue
 
-for ch in names[0]:
-    if ch != '\n' and ch != '\t':
-        hebrew_full_name += ch
-for ch in names[1]:
-    if ch != '\n' and ch != '\t':
-        english_full_name += ch
+    names = h1.text.split('|')
 
-liat.role_type = hebrew_full_name.split()[0][1:]
-hebrew_full_name = hebrew_full_name.split(' ')[1:]
-hebrew_full_name = " ".join(hebrew_full_name)
+    for ch in names[0]:
+        if ch != '\n' and ch != '\t':
+            hebrew_full_name += ch
+    for ch in names[1]:
+        if ch != '\n' and ch != '\t':
+            english_full_name += ch
 
-liat.hebrew_first_name = hebrew_full_name.split()[0]
-liat.last_name_in_hebrew = hebrew_full_name.split()[1]
-liat.first_name_in_english = english_full_name.split()[0]
-liat.last_name_in_english = english_full_name.split()[1]
-# endregion
+    liat.role_type = hebrew_full_name.split()[0][1:]
+    hebrew_full_name = hebrew_full_name.split(' ')[1:]
+    hebrew_full_name = " ".join(hebrew_full_name)
+    liat.hebrew_first_name = hebrew_full_name.split()[0]
+    liat.last_name_in_hebrew = hebrew_full_name.split()[1]
+    liat.first_name_in_english = english_full_name.split()[0]
+    liat.last_name_in_english = english_full_name.split()[1]
+    # endregion
 
-# region role description extracting
-role_description = judges_entry.find("strong")
-liat.role_description = role_description.text
-# endregion
+    # region role description extracting
+    try:
+        role_description = judges_entry.find("strong")
+        liat.role_description = role_description.text
+    except:
+        print("No strong element? ", URL)
+    # endregion
 
-# region data extracting
-judge_data = soup.find("p")
-data_lines = judge_data.text.split('\n')
 
-birth_text = data_lines[0]
-birth_text = birth_text.split(' ')
+    # region data extracting
 
-# region gender extractor
-if birth_text[0] == "נולדה":
-    liat.gender = "Female"
-elif birth_text[0] == "נולד":
-    liat.gender = "Male"
-else:
-    liat.gender = "Error_gender"
-# endregion
+    try:
+        judge_data = soup.find("p")
+        data_lines = judge_data.text.split('\n')
+    except:
+        print("no data data judge? ", URL)
 
-# region birth year extracting
-liat.year_of_birth = birth_text[2]
-# endregion
+    try:
+        birth_text = data_lines[0]
+        birth_text = birth_text.split(' ')
 
-# region birth country extracting
-liat.country_of_birth = birth_text[3][1:]
-# endregion
-
-data_lines = data_lines[1:]
-
-for data_line in data_lines:
-    if data_line.__contains__("שירת"):
-        # region Army extract
-        liat.served_in_army = True
-        splitted_line = data_line.split()
-        years = []
-        for value in splitted_line:
-            if value.isnumeric():
-                years.append(value)
-        liat.start_year_of_military = years[0]
-        liat.end_year_of_military = years[1]
+        # region gender extractor
+        if birth_text[0] == "נולדה":
+            liat.gender = "Female"
+        elif birth_text[0] == "נולד":
+            liat.gender = "Male"
+        else:
+            liat.gender = "Error_gender"
         # endregion
-    elif data_line.__contains__("תואר ראשון"):
-        # region Graduation extract
-        splitted_line = data_line.split()
-        for value in splitted_line:
-            if value.isnumeric():
-                liat.graduation_year = value
-        # endregion
+    except:
+        print("No gender? ", URL)
 
-# endregion
+    try:
+        # region birth year extracting
+        liat.year_of_birth = birth_text[2]
+        # endregion
+    except:
+        liat.year_of_birth = ""
+
+    try:
+        # region birth country extracting
+        liat.country_of_birth = birth_text[3][1:]
+        # endregion
+    except:
+        try:
+            liat.country_of_birth = birth_text[1][1:]
+        except:
+            print("No country birth? ", URL)
+
+    try:
+        data_lines = data_lines[1:]
+    except:
+        print("No data lines? ", URL)
+
+    got_certified = False
+
+    for data_line in data_lines:
+        if got_certified:
+            liat.job_history += data_line
+        elif data_line.__contains__("שירת"):
+            # region Army extract
+            liat.served_in_army = True
+            splitted_line = data_line.split()
+            years = []
+            for value in splitted_line:
+                if value.isnumeric():
+                    years.append(value)
+            try:
+                liat.start_year_of_military = years[0]
+                liat.end_year_of_military = years[1]
+            except:
+                splitted_army = data_line.split("-")
+                for army_line in splitted_army:
+                    for value in army_line.split():
+                        if value.isnumeric():
+                            years.append(value)
+                try:
+                    liat.start_year_of_military = years[0]
+                    liat.end_year_of_military = years[1]
+                except:
+                    print("No army? ", URL)
+                    continue
+            # endregion
+        elif data_line.__contains__("תואר ראשון"):
+            # region Graduation extract
+            splitted_line = data_line.split()
+            for value in splitted_line:
+                if value.isnumeric():
+                    liat.graduation_year = value
+            # endregion
+        elif data_line.__contains__("התמחה") or data_line.__contains__("התמחתה"):
+            # region internship extract
+            years = []
+            splitted_line = data_line.split()
+            for value in splitted_line:
+                if value.isnumeric():
+                    years.append(value)
+
+            try:
+                liat.intern_start = years[0]
+                liat.intern_end = years[1]
+            except:
+                splitted_intern = data_line.split("-")
+                for inter_line in splitted_intern:
+                    for value in inter_line.split():
+                        if value.isnumeric():
+                            years.append(value)
+                try:
+                    liat.intern_start = years[0]
+                    liat.intern_end = years[1]
+                except:
+                    print("No intern? ", URL)
+                    continue
+            # endregion
+        elif data_line.__contains__("הוסמכה") or data_line.__contains__("הוסמך"):
+            # region internship extract
+            years = []
+            splitted_line = data_line.split()
+            for value in splitted_line:
+                if value.isnumeric():
+                    liat.year_of_certification = value
+                    got_certified = True
+                    break
+            # endregion
+
+    # endregion
+
+    judges_list.append(liat)
+
+# Writing to judges.json
+with open("judges.json", "w") as outfile:
+    json_string = json.dumps([ob.__dict__ for ob in judges_list], ensure_ascii=False)
+    outfile.write(json_string)
+
+# print(jsonstr)
