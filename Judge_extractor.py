@@ -13,7 +13,7 @@ class JudgeInfo:
     country_of_birth = ""
     role_description = ""
     role_type = ""
-    served_in_army: bool
+    served_in_army = False
     start_year_of_military = ""
     end_year_of_military = ""
     graduation_year = ""
@@ -21,6 +21,7 @@ class JudgeInfo:
     intern_end = ""
     year_of_certification = ""
     job_history = ""
+    page_reference = ""
 
 
 list_of_urls = []
@@ -33,7 +34,11 @@ for line in Lines:
     list_of_urls.append(line.strip())
 
 for URL in list_of_urls:
-    page = requests.get(URL)
+    try:
+        page = requests.get(URL)
+    except:
+        print("No url: ", URL)
+        continue
     soup = BeautifulSoup(page.content, "html.parser")
     liat = JudgeInfo()
     judges_entry = soup.find(id="article_body")
@@ -56,6 +61,7 @@ for URL in list_of_urls:
         if ch != '\n' and ch != '\t':
             english_full_name += ch
 
+    liat.page_reference = URL
     liat.role_type = hebrew_full_name.split()[0][1:]
     hebrew_full_name = hebrew_full_name.split(' ')[1:]
     hebrew_full_name = " ".join(hebrew_full_name)
@@ -121,6 +127,14 @@ for URL in list_of_urls:
 
     got_certified = False
 
+    liat.served_in_army = False
+    liat.start_year_of_military = ""
+    liat.end_year_of_military = ""
+    liat.graduation_year = ""
+    liat.intern_start = ""
+    liat.intern_end = ""
+    liat.year_of_certification = ""
+    liat.job_history = ""
     for data_line in data_lines:
         if got_certified:
             liat.job_history += data_line
